@@ -135,25 +135,6 @@
       pointer-events: auto;
     }
     .assigned-project.merged { position: absolute; z-index: 3; box-sizing: border-box; }
-    .instructions {
-      background: #f8f9fa;
-      padding: 18px;
-      border-radius: 6px;
-      margin-top: 20px;
-      font-size: 18px;
-      border-left: 4px solid #3498db;
-    }
-    .instructions h4 { margin-bottom: 8px; color: #2c3e50; font-size: 20px; }
-    .instructions ul { padding-left: 20px; }
-    .instructions li { margin-bottom: 6px; }
-    @media (max-width: 768px) {
-      .schedule-container { flex-direction: column; }
-      .projects-sidebar { width: 100%; }
-      .schedule { grid-template-columns: 15% repeat(16, 5%); }
-      .project, .assigned-project, .employee-name { font-size: 18px; }
-      .header-bar { flex-direction: column; align-items: flex-start; }
-      h2 { margin-top: 10px; }
-    }
   </style>
 </head>
 <body>
@@ -169,17 +150,6 @@
         <div id="projects"></div>
       </div>
       <div class="schedule" id="schedule"></div>
-    </div>
-
-    <div class="instructions">
-      <h4>使用说明</h4>
-      <ul>
-        <li><strong>新交互方式</strong>: 先点击选择起始单元格（绿色高亮），然后拖拽项目到该单元格</li>
-        <li>项目会从选定的起始单元格开始，向右延伸到您拖拽的结束位置</li>
-        <li>每个格子只能分配一个项目</li>
-        <li>点击已分配的项目可以将其从排班表中移除</li>
-        <li>点击其他单元格可以更改起始位置</li>
-      </ul>
     </div>
   </div>
 
@@ -287,9 +257,15 @@
         e.dataTransfer.setData('text/plain', e.target.id);
         e.target.classList.add('dragging');
 
-        // ✅ 拖拽时缩小 50%
-        e.target.style.transform = 'scale(0.5)';
-        e.target.style.opacity = '0.7';
+        // ✅ 使用 setDragImage 创建缩小版预览图
+        const preview = e.target.cloneNode(true);
+        preview.style.transform = 'scale(0.5)';
+        preview.style.opacity = '0.8';
+        preview.style.position = 'absolute';
+        preview.style.top = '-9999px';
+        document.body.appendChild(preview);
+        e.dataTransfer.setDragImage(preview, preview.offsetWidth / 4, preview.offsetHeight / 4);
+        setTimeout(() => preview.remove(), 0);
       });
 
       projectDiv.addEventListener('dragend', function() {
@@ -298,10 +274,6 @@
           dragInfo = null;
         }
         this.classList.remove('dragging');
-
-        // ✅ 拖拽结束还原大小
-        this.style.transform = '';
-        this.style.opacity = '';
       });
 
       projectsContainer.appendChild(projectDiv);
@@ -377,28 +349,7 @@
       merged.dataset.endCol = endCol;
 
       const spanCount = endCol - startCol + 1;
-      let fontSize = Math.max(12, 16 + spanCount * 2);
-      if (spanCount === 1) {
-        fontSize = 14;
-        merged.style.whiteSpace = 'normal';
-        merged.style.wordBreak = 'break-word';
-        merged.style.textAlign = 'center';
-        merged.style.display = 'flex';
-        merged.style.flexDirection = 'column';
-        merged.style.alignItems = 'center';
-        merged.style.justifyContent = 'center';
-      } else {
-        merged.style.whiteSpace = 'nowrap';
-        merged.style.overflow = 'hidden';
-        merged.style.textOverflow = 'ellipsis';
-        merged.style.display = 'flex';
-        merged.style.alignItems = 'center';
-        merged.style.justifyContent = 'center';
-      }
-      merged.style.fontSize = fontSize + 'px';
-      merged.style.boxSizing = 'border-box';
-      merged.style.padding = '6px 8px';
-
+      merged.style.fontSize = Math.max(12, 16 + spanCount * 2) + 'px';
       const soMatch = dragInfo.projectName.match(/SO-\d+/);
       if (soMatch && soColorMap[soMatch[0]]) {
         merged.style.background = soColorMap[soMatch[0]];
@@ -409,17 +360,12 @@
       const firstRect = first.getBoundingClientRect();
       const lastRect = last.getBoundingClientRect();
       const schedRect = schedule.getBoundingClientRect();
-
       const rawLeft = firstRect.left - schedRect.left;
       const rawWidth = lastRect.right - firstRect.left;
       const top = firstRect.top - schedRect.top;
       const height = firstRect.height;
-      const EXTRA = 4;
-      const leftAdj = Math.max(0, rawLeft - Math.ceil(EXTRA / 2));
-      const widthAdj = Math.max(20, rawWidth + EXTRA);
-
-      merged.style.left = leftAdj + 'px';
-      merged.style.width = widthAdj + 'px';
+      merged.style.left = rawLeft + 'px';
+      merged.style.width = rawWidth + 'px';
       merged.style.top = top + 'px';
       merged.style.height = height + 'px';
 
@@ -430,18 +376,6 @@
 
       schedule.appendChild(merged);
       dragInfo.cells.forEach(c => c.classList.add('occupied'));
-
-      if (spanCount === 1) {
-        requestAnimationFrame(() => {
-          let fs = parseInt(window.getComputedStyle(merged).fontSize, 10) || 14;
-          const minFS = 10;
-          while (fs > minFS) {
-            if (merged.scrollHeight <= merged.clientHeight && merged.scrollWidth <= merged.clientWidth) break;
-            fs -= 1;
-            merged.style.fontSize = fs + 'px';
-          }
-        });
-      }
     }
 
     function removeMergedProject(el) {
