@@ -248,6 +248,8 @@
       }
 
       projectDiv.setAttribute('draggable', 'true');
+
+      // ✅ 改成真正缩小一半的 drag image
       projectDiv.addEventListener('dragstart', function(e) {
         if (!selectedCell || selectedCell.classList.contains('break')) {
           e.preventDefault();
@@ -257,15 +259,21 @@
         e.dataTransfer.setData('text/plain', e.target.id);
         e.target.classList.add('dragging');
 
-        // ✅ 使用 setDragImage 创建缩小版预览图
-        const preview = e.target.cloneNode(true);
-        preview.style.transform = 'scale(0.5)';
-        preview.style.opacity = '0.8';
-        preview.style.position = 'absolute';
-        preview.style.top = '-9999px';
-        document.body.appendChild(preview);
-        e.dataTransfer.setDragImage(preview, preview.offsetWidth / 4, preview.offsetHeight / 4);
-        setTimeout(() => preview.remove(), 0);
+        const clone = e.target.cloneNode(true);
+        clone.style.fontSize = (parseFloat(window.getComputedStyle(e.target).fontSize) * 0.6) + "px";
+        clone.style.padding = "6px";
+        clone.style.width = (e.target.offsetWidth / 2) + "px";
+        clone.style.height = (e.target.offsetHeight / 2) + "px";
+        clone.style.opacity = "0.7";
+        clone.style.borderRadius = "4px";
+        clone.style.position = "absolute";
+        clone.style.top = "-9999px";
+        clone.style.left = "-9999px";
+        clone.style.zIndex = "9999";
+        document.body.appendChild(clone);
+
+        e.dataTransfer.setDragImage(clone, clone.offsetWidth / 2, clone.offsetHeight / 2);
+        setTimeout(() => clone.remove(), 0);
       });
 
       projectDiv.addEventListener('dragend', function() {
